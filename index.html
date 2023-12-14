@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>PixiJS Playground</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/20.0.0/tween.umd.js"></script>
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <script src="dependencies/sound.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <script>
+        const app = new PIXI.Application({ width: 1000, height: 800 });
+        let sound;
+
+        sounds.load([
+            "assets/sounds/pay.wav"
+        ]);
+        sounds.whenLoaded = soundSetup;
+
+        function soundSetup() {
+            sound = sounds["assets/sounds/pay.wav"];
+        }
+        document.body.appendChild(app.view);
+        const backgroundTexture = PIXI.Texture.from('assets/background.png');
+        const background = new PIXI.Sprite(backgroundTexture);
+
+        background.position.set(app.screen.width / 2, app.screen.height / 2);
+        background.width = app.screen.width;
+        background.height = app.screen.height;
+        background.anchor.set(0.5);
+
+        const blurFilter = new PIXI.filters.BlurFilter();
+        background.filters = [blurFilter];
+
+        blurFilter.blur = 5;
+
+        app.stage.addChild(background);
+
+        const reelframeTexture = PIXI.Texture.from('assets/reelframe.png');
+
+        // const reelframe = new PIXI.Sprite(reelframeTexture);
+        // reelframe.anchor.set(0.5);
+        // reelframe.position.set(app.screen.width / 2, app.screen.height / 2);
+        // reelframe.width = app.screen.width - 120;
+        // reelframe.height = app.screen.height - 230;
+
+        // app.stage.addChild(reelframe);
+
+        PIXI.Assets.load([
+            '/assets/symbol00.png',
+            '/assets/symbol01.png',
+            '/assets/symbol02.png',
+            '/assets/symbol03.png',
+            '/assets/symbol04.png',
+            '/assets/symbol05.png',
+            '/assets/symbol06.png',
+            '/assets/symbol07.png',
+            '/assets/symbol08.png',
+            '/assets/symbol09.png',
+            '/assets/symbol10.png',
+            '/assets/symbol11.png',
+            '/assets/symbol12.png'
+        ]).then(onAssetsLoaded);
+
+        const REEL_WIDTH = 170;
+        const SYMBOL_SIZE = 170;
+
+        function onAssetsLoaded() {
+            const slotTextures = [
+                PIXI.Texture.from('/assets/symbol00.png'),
+                PIXI.Texture.from('/assets/symbol01.png'),
+                PIXI.Texture.from('/assets/symbol02.png'),
+                PIXI.Texture.from('/assets/symbol03.png'),
+                PIXI.Texture.from('/assets/symbol04.png'),
+                PIXI.Texture.from('/assets/symbol05.png'),
+                PIXI.Texture.from('/assets/symbol06.png'),
+                PIXI.Texture.from('/assets/symbol07.png'),
+                PIXI.Texture.from('/assets/symbol08.png'),
+                PIXI.Texture.from('/assets/symbol09.png'),
+                PIXI.Texture.from('/assets/symbol10.png'),
+                PIXI.Texture.from('/assets/symbol11.png'),
+                PIXI.Texture.from('/assets/symbol12.png'),
+            ];
+
+            const reels = [];
+            const reelContainer = new PIXI.Container();
+            // const reelContainerBackground = new PIXI.Sprite(reelframeTexture);
+            // reelContainerBackground.width = reelContainer.width;
+            // reelContainerBackground.height = reelContainer.height;
+            // reelContainer.addChildAt(reelContainerBackground, 0); 
+            const reelframe = new PIXI.Sprite(reelframeTexture);
+            reelframe.anchor.set(0.5);
+            reelframe.position.set(350, 20);
+            reelframe.width = app.screen.width - 120;
+            reelframe.height = app.screen.height - 230;
+
+            reelContainer.addChild(reelframe);
+
+            for (let i = 0; i < 5; i++) {
+                const rc = new PIXI.Container();
+                rc.x = i * REEL_WIDTH + 10;
+                reelContainer.addChild(rc);
+
+
+                const reel = {
+                    container: rc,
+                    symbols: [],
+                    position: 0,
+                    previousPosition: 0,
+                    blur: new PIXI.filters.BlurFilter(),
+                };
+
+                reel.blur.blurX = 0;
+                reel.blur.blurY = 0;
+                rc.filters = [reel.blur];
+
+                for (let j = 0; j < 3; j++) {
+                    const symbol = new PIXI.Sprite(slotTextures[Math.floor(Math.random() * slotTextures.length)]);
+                    symbol.y = j * SYMBOL_SIZE;
+                    symbol.anchor.set(0.5);
+                    symbol.scale.x = symbol.scale.y = Math.min(SYMBOL_SIZE / symbol.width, SYMBOL_SIZE / symbol.height);
+                    symbol.x = Math.round((SYMBOL_SIZE - symbol.width) / 2);
+                    reel.symbols.push(symbol);
+                    rc.addChild(symbol);
+                }
+                reels.push(reel);
+            }
+            app.stage.addChild(reelContainer);
+
+            const margin = (app.screen.height - SYMBOL_SIZE * 3) / 2;
+
+            reelContainer.y = margin + 220;
+            reelContainer.x = app.screen.width - REEL_WIDTH * 5;
+            app.stage.addChild(reelContainer);
+
+            const top = new PIXI.Graphics();
+
+            top.beginFill(0, 1);
+            top.drawRect(0, 0, 0, margin);
+            const bottom = new PIXI.Graphics();
+
+            bottom.beginFill(0, 1);
+            bottom.drawRect(0, SYMBOL_SIZE * 5 + margin, app.screen.width, margin);
+
+            const buttonTexture = PIXI.Texture.from('assets/spinbtn.png');
+            const buttonOverTexture = PIXI.Texture.from('assets/spinbtn_over.png');
+
+            const button = new PIXI.Sprite(buttonTexture);
+            button.anchor.set(0.5);
+            button.interactive = true;
+            button.buttonMode = true;
+
+            const spaceBetween = 20;
+            button.position.set(app.screen.width / 2, reelContainer.y + reelContainer.height / 2 + button.height / 2 + spaceBetween);
+
+            const buttonScale = 0.5;
+            button.scale.set(buttonScale);
+
+            app.stage.addChild(button);
+
+            button
+                .on('pointerover', () => {
+                    button.texture = buttonOverTexture;
+                })
+                .on('pointerout', () => {
+                    button.texture = buttonTexture;
+                })
+                .on('pointerdown', startPlay);
+
+            app.stage.addChild(top);
+            app.stage.addChild(bottom);
+
+            top.eventMode = 'static';
+            button.cursor = 'pointer';
+
+            let running = false;
+
+            function startPlay() {
+                if (running) return;
+                sound.play();
+                running = true;
+
+                for (let i = 0; i < reels.length; i++) {
+                    const r = reels[i];
+                    const extra = Math.floor(Math.random() * 3);
+                    const target = r.position +10 + i * 5 + extra;
+                    const time = 5000 + i * 500 + extra * 500;
+
+                    tweenTo(r, 'position', target, time, backout(0.5), null, i === reels.length - 1 ? reelsComplete : null);
+
+                }
+            }
+
+            function checkWin() {
+                for (let i = 0; i < reels.length; i++) {
+                    const symbols = reels[i].symbols;
+                    const symbolType = symbols[0].texture;
+
+                    if (symbols.every(symbol => symbol.texture === symbolType)) {
+                        console.log('You won!');
+                    }
+                }
+            }
+
+            function reelsComplete() {
+                running = false;
+                checkWin();
+            }
+
+            app.ticker.add((delta) => {
+                for (let i = 0; i < reels.length; i++) {
+                    const r = reels[i];
+
+                    r.blur.blurY = (r.position - r.previousPosition) * 8;
+                    r.previousPosition = r.position;
+
+                    for (let j = 0; j < r.symbols.length; j++) {
+                        const s = r.symbols[j];
+                        const prevy = s.y;
+
+                        s.y = ((r.position + j) % r.symbols.length) * SYMBOL_SIZE - SYMBOL_SIZE;
+                        if (s.y < 0 && prevy > SYMBOL_SIZE) {
+                            s.texture = slotTextures[Math.floor(Math.random() * slotTextures.length)];
+                            s.scale.x = s.scale.y = Math.min(SYMBOL_SIZE / s.texture.width, SYMBOL_SIZE / s.texture.height);
+                            s.x = Math.round((SYMBOL_SIZE - s.width) / 2);
+                        }
+                    }
+                }
+            });
+        }
+
+        const tweening = [];
+
+        function tweenTo(object, property, target, time, easing, onchange, oncomplete) {
+            const tween = {
+                object,
+                property,
+                propertyBeginValue: object[property],
+                target,
+                easing,
+                time,
+                change: onchange,
+                complete: oncomplete,
+                start: Date.now(),
+            };
+
+            tweening.push(tween);
+
+            return tween;
+        }
+        app.ticker.add((delta) => {
+            const now = Date.now();
+            const remove = [];
+
+            for (let i = 0; i < tweening.length; i++) {
+                const tween = tweening[i];
+                const phase = Math.min(1, (now - tween.start) / tween.time);
+
+                tween.object[tween.property] = lerp(tween.propertyBeginValue, tween.target, tween.easing(phase));
+                if (tween.change) tween.change(tween);
+                if (phase === 1) {
+                    tween.object[tween.property] = tween.target;
+                    if (tween.complete) tween.complete(tween);
+                    remove.push(tween);
+                }
+            }
+            for (let i = 0; i < remove.length; i++) {
+                tweening.splice(tweening.indexOf(remove[i]), 1);
+            }
+        });
+
+        function lerp(a1, a2, tween) {
+            return a1 * (1 - tween) + a2 * tween;
+        }
+
+        function backout(amount) {
+            return (tween) => (--tween * tween * ((amount + 1) * tween + amount) + 1);
+        }
+    </script>
+</body>
+
+</html>
